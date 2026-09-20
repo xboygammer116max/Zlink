@@ -1,0 +1,90 @@
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Parent = game:GetService("CoreGui") or game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+ScreenGui.ResetOnSpawn = false
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 90, 0, 45)
+MainFrame.Position = UDim2.new(0.05, 0, 0.05, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+MainFrame.BackgroundTransparency = 0.9
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true 
+MainFrame.Parent = ScreenGui
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 6)
+UICorner.Parent = MainFrame
+
+-- Two-Step Close Button
+local CloseButton = Instance.new("TextButton")
+CloseButton.Size = UDim2.new(0, 30, 0, 15) -- Widened slightly to fit the "SURE?" text
+CloseButton.Position = UDim2.new(1, -33, 0, 3)
+CloseButton.BackgroundTransparency = 1
+CloseButton.Font = Enum.Font.SourceSansBold
+CloseButton.TextSize = 10
+CloseButton.TextColor3 = Color3.fromRGB(255, 85, 85)
+CloseButton.Text = "X"
+CloseButton.Parent = MainFrame
+
+local isConfirming = false
+local confirmThread = nil
+
+CloseButton.MouseButton1Click:Connect(function()
+	if not isConfirming then
+		isConfirming = true
+		CloseButton.Text = "SURE?"
+		
+		-- Cancel and reset if the user doesn't click again within 3 seconds
+		confirmThread = task.delay(3, function()
+			isConfirming = false
+			CloseButton.Text = "X"
+		end)
+	else
+		if confirmThread then task.cancel(confirmThread) end
+		ScreenGui:Destroy()
+	end
+end)
+
+local OptButton = Instance.new("TextButton")
+OptButton.Size = UDim2.new(0.85, 0, 0, 20)
+OptButton.Position = UDim2.new(0.075, 0, 0.5, -6)
+OptButton.BackgroundColor3 = Color3.fromRGB(45, 125, 45)
+OptButton.BackgroundTransparency = 0.9
+OptButton.Font = Enum.Font.SourceSansBold
+OptButton.TextSize = 10
+OptButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+OptButton.Text = "OPTIMIZE"
+OptButton.Parent = MainFrame
+
+local ButtonCorner = Instance.new("UICorner")
+ButtonCorner.CornerRadius = UDim.new(0, 4)
+ButtonCorner.Parent = OptButton
+
+local Lighting = game:GetService("Lighting")
+
+OptButton.MouseButton1Click:Connect(function()
+	OptButton.Text = "OPT..."
+	OptButton.BackgroundColor3 = Color3.fromRGB(120, 120, 120)
+	
+	settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+	
+	Lighting.GlobalShadows = false
+	Lighting.FogEnd = 9e9
+	
+	for _, v in ipairs(workspace:GetDescendants()) do
+		if v:IsA("Texture") or v:IsA("Decal") then
+			v:Destroy()
+		elseif v:IsA("BasePart") then
+			v.Material = Enum.Material.SmoothPlastic
+			v.Reflectance = 0
+		elseif v:IsA("PostEffect") or v:IsA("Explosion") or v:IsA("Sparkles") then
+			v:Destroy()
+		end
+	end
+	
+	OptButton.Text = "DONE"
+	OptButton.BackgroundColor3 = Color3.fromRGB(30, 80, 30)
+	task.wait(1)
+	OptButton.Text = "DONE"
+end)
