@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Image Storage with Analytics</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 600px;
+            text-align: center;
+        }
+        input[type="password"], input[type="file"] {
+            width: 80%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .hidden {
+            display: none !important;
+        }
+        /* Storage Analysis Styling */
+        .analytics-box {
+            background: #f9f9f9;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        .analytics-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .progress-bar-container {
+            background: #e0e0e0;
+            border-radius: 10px;
+            height: 15px;
+            width: 100%;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+        .progress-bar {
+            background: linear-gradient(90deg, #4CAF50, #FF9800);
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        .stats-text {
+            font-size: 13px;
+            color: #666;
+            display: flex;
+            justify-content: space-between;
+        }
+        /* Gallery Styling */
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .image-card {
+            position: relative;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #eee;
+        }
+        .image-card img {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            display: block;
+        }
+        .delete-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: rgba(255, 0, 0, 0.7);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            cursor: pointer;
+            font-size: 12px;
+            line-height: 25px;
+            padding: 0;
+        }
+        .error-msg {
+            color: red;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- Password Screen -->
+    <div id="login-screen">
+        <h2>🔒 Secure Image Vault</h2>
+        <p>Enter password to view your storage</p>
+        <input type="password" id="password-input" placeholder="Enter Password">
+        <br>
+        <button onclick="checkPassword()">Unlock</button>
+        <p id="error" class="error-msg"></p>
+    </div>
+
+    <!-- Storage Screen -->
+    <div id="storage-screen" class="hidden">
+        <h2>🖼️ Your Image Storage</h2>
+        <input type="file" id="image-input" accept="image/*">
+        <br>
+        <button onclick="uploadImage()">Upload Image</button>
+
+        <!-- 📊 Storage Analysis Dashboard -->
+        <div class="analytics-box">
+            <div class="analytics-title">
+                <span>📊 Storage Usage Analysis</span>
+                <span id="image-count">0 Images</span>
+            </div>
+            <div class="progress-bar-container">
+                <div id="storage-progress" class="progress-bar"></div>
+            </div>
+            <div class="stats-text">
+                <span id="storage-used">Used: 0 KB</span>
+                <span id="storage-remaining">Remaining: 5120 KB</span>
+            </div>
+        </div>
+
+        <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
+        <div class="gallery" id="gallery"></div>
+        <br>
+        <button style="background-color: #f44336;" onclick="lockVault()">Lock Vault</button>
+    </div>
+</div>
+
+<script>
+    const correctPassword = "1234";
+    const MAX_STORAGE_KB = 5120; // Default browser limit estimate (~5MB)
+    let storedImages = JSON.parse(localStorage.getItem('vault_images')) || [];
+
+    // Check Password Function
+    function checkPassword() {
+        const input = document.getElementById('password-input').value;
+        if (input === correctPassword) {
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('storage-screen').classList.remove('hidden');
+            document.getElementById('password-input').value = ""; 
+            document.getElementById('error').innerText = "";
+            displayImages();
+            updateStorageAnalysis();
+        } else {
+            document.getElementById('error').innerText = "Incorrect password! Try again.";
+        }
+    }
+
+    // Handle Upload
+    function uploadImage() {
+        const fileInput = document.getElementById('image-input');
+        const file = fileInput.files[0];
+
+        if (!file) {
+            alert("Please select an image first!");
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const base64Image = e.target.result;
+            storedImages.push(base64Image);
+            
+            try {
+                localStorage.setItem('vault_images', JSON.stringify(storedImages));
+                displayImages();
+                updateStorageAnalysis();
+                fileInput.value = ""; 
+            } catch (error) {
+                alert("Storage limit exceeded! Try compressing or uploading smaller file sizes.");
+                storedImages.pop(); // Remove the failed image from memory array
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // Display Images from Storage
+    function displayImages() {
+        const gallery = document.getElementById('gallery');
+        gallery.innerHTML = ""; 
+
+        storedImages.forEach((imgSrc, index) => {
+            const card = document.createElement('div');
+            card.className = 'image-card';
+
+            const img = document.createElement('img');
+            img.src = imgSrc;
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'delete-btn';
+            deleteBtn.innerText = 'X';
+            deleteBtn.onclick = function() { deleteImage(index); };
+
+            card.appendChild(img);
+            card.appendChild(deleteBtn);
+            gallery.appendChild(card);
+        });
+    }
+
+    // Storage Analysis Logic
+    function updateStorageAnalysis() {
+        // Stringify the images array to accurately calculate how much raw string data is inside localStorage
+        const rawStringData = JSON.stringify(storedImages);
+        
+        // Calculate size in Kilobytes (1 character = 2 bytes in JavaScript string memory context)
+        const totalBytes = rawStringData.length * 2;
+        const totalKB = parseFloat((totalBytes / 1024).toFixed(2));
+        
+        // Compute percentage out of 5MB limit
+        let percentage = (totalKB / MAX_STORAGE_KB) * 100;
+        if (percentage > 100) percentage = 100;
+
+        const remainingKB = parseFloat((MAX_STORAGE_KB - totalKB).toFixed(2));
+
+        // Update HTML Elements
+        document.getElementById('image-count').innerText = `${storedImages.length} Image${storedImages.length === 1 ? '' : 's'}`;
+        document.getElementById('storage-progress').style.width = `${percentage}%`;
+        document.getElementById('storage-used').innerText = `Used: ${totalKB} KB`;
+        document.getElementById('storage-remaining').innerText = `Remaining: ${remainingKB < 0 ? 0 : remainingKB} KB`;
+        
+        // Color changing indicator logic if nearing max limit
+        const progressBar = document.getElementById('storage-progress');
+        if (percentage > 85) {
+            progressBar.style.background = '#f44336'; // Turn red if almost full
+        } else {
+            progressBar.style.background = 'linear-gradient(90deg, #4CAF50, #FF9800)';
+        }
+    }
+
+    // Delete Image Function
+    function deleteImage(index) {
+        storedImages.splice(index, 1);
+        localStorage.setItem('vault_images', JSON.stringify(storedImages));
+        displayImages();
+        updateStorageAnalysis();
+    }
+
+    // Lock Vault Function
+    function lockVault() {
+        document.getElementById('storage-screen').classList.add('hidden');
+        document.getElementById('login-screen').classList.remove('hidden');
+    }
+</script>
+
+</body>
+</html>
